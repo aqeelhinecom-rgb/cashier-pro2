@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer" />
+    <title>جاري العودة إلى تطبيق Cashier Pro...</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: #f4f6fa;
+        color: #0f1e36;
+        text-align: center;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0d1626;
+          color: #edf2f7;
+        }
+        .card {
+          background: #162238 !important;
+          border-color: #253654 !important;
+        }
+        .sub {
+          color: #b0bfd4 !important;
+        }
+      }
+      .card {
+        width: 100%;
+        max-width: 380px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 28px 22px;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 16px;
+        border: 4px solid rgba(29, 95, 214, 0.2);
+        border-top-color: #1d5fd6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 19px;
+        font-weight: 800;
+      }
+      .sub {
+        margin: 0 0 20px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #475569;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 18px;
+        border-radius: 12px;
+        background: #1d5fd6;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div id="spinner" class="spinner" aria-hidden="true"></div>
+      <h1 id="title">تم تسجيل الدخول بنجاح</h1>
+      <p id="message" class="sub">جاري إعادتك تلقائياً إلى تطبيق Cashier Pro...</p>
+      <a id="return-btn" class="btn hidden" href="cashierpro://oauth">العودة إلى تطبيق Cashier Pro</a>
+    </main>
+
+    <script>
+      (function () {
+        var APP_CALLBACK_BASE = 'cashierpro://oauth';
+        var ALLOWED_KEYS = [
+          'access_token',
+          'token_type',
+          'expires_in',
+          'scope',
+          'state',
+          'error',
+          'error_description',
+        ];
+
+        var hashRaw = window.location.hash ? window.location.hash.replace(/^#/, '') : '';
+        var searchRaw = window.location.search ? window.location.search.replace(/^\?/, '') : '';
+        var hashParams = new URLSearchParams(hashRaw);
+        var searchParams = new URLSearchParams(searchRaw);
+        var forwardParams = new URLSearchParams();
+
+        for (var i = 0; i < ALLOWED_KEYS.length; i++) {
+          var key = ALLOWED_KEYS[i];
+          var val = hashParams.get(key);
+          if (val === null || val === '') {
+            val = searchParams.get(key);
+          }
+          if (val !== null && val !== '') {
+            forwardParams.set(key, val);
+          }
+        }
+
+        var hasToken = Boolean(forwardParams.get('access_token'));
+        var hasError = Boolean(forwardParams.get('error'));
+        var titleEl = document.getElementById('title');
+        var msgEl = document.getElementById('message');
+        var btnEl = document.getElementById('return-btn');
+        var spinnerEl = document.getElementById('spinner');
+
+        if (!hasToken && !hasError) {
+          if (spinnerEl) spinnerEl.classList.add('hidden');
+          if (titleEl) titleEl.textContent = 'لم يتم استلام بيانات المصادقة';
+          if (msgEl) {
+            msgEl.textContent =
+              'تعذر العثور على رمز الوصول في الرابط. يرجى العودة إلى التطبيق والمحاولة مجدداً.';
+          }
+          if (btnEl) {
+            btnEl.setAttribute('href', APP_CALLBACK_BASE + '#error=missing_token');
+            btnEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        var targetUrl = APP_CALLBACK_BASE + '#' + forwardParams.toString();
+
+        if (hasError) {
+          if (titleEl) titleEl.textContent = 'تعذر إكمال تسجيل الدخول';
+          if (msgEl) msgEl.textContent = 'جاري إعادتك إلى تطبيق Cashier Pro...';
+        }
+
+        if (btnEl) {
+          btnEl.setAttribute('href', targetUrl);
+        }
+
+        try {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        } catch (_) {
+          // Ignore history API restrictions
+        }
+
+        // Immediate deep-link redirect back into Capacitor Android app
+        window.location.replace(targetUrl);
+
+        // Reveal manual return button as fallback if browser requires user gesture
+        window.setTimeout(function () {
+          if (spinnerEl) spinnerEl.classList.add('hidden');
+          if (msgEl) {
+            msgEl.textContent = 'إذا لم يتم فتح التطبيق تلقائياً، اضغط الزر أدناه للعودة فوراً.';
+          }
+          if (btnEl) {
+            btnEl.classList.remove('hidden');
+          }
+        }, 1200);
+      })();
+    </script>
+  </body>
+</html>

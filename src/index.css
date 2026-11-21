@@ -1,0 +1,584 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   Cashier Pro — Centralized Design Tokens (Light & Dark Mode)
+   ========================================================================== */
+:root {
+  --app-font: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Light Mode Palette: Off-white canvas, Crisp white cards, Professional Blue */
+  --bg-app: #f4f6fa;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #edf2f7;
+  --bg-chrome: #ffffff;
+  --bg-hover: #e6ecf5;
+
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --brand-primary: #1d5fd6;
+  --brand-primary-hover: #174eb5;
+  --brand-soft: rgba(29, 95, 214, 0.1);
+  --brand-soft-text: #1d4ed8;
+
+  --text-primary: #0f1e36;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --color-success: #15803d;
+  --color-success-bg: #ecfdf5;
+  --color-success-border: #a7f3d0;
+
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+
+  /* Unified Typography Scale */
+  --fs-page-title: clamp(1.375rem, 1.3rem + 0.35vw, 1.5rem); /* 22px - 24px */
+  --fs-section-title: clamp(1.125rem, 1.08rem + 0.25vw, 1.25rem); /* 18px - 20px */
+  --fs-body: 1rem; /* 16px */
+  --fs-button: 0.9375rem; /* 15px */
+  --fs-meta: 0.8125rem; /* 13px */
+}
+
+html.dark {
+  color-scheme: dark;
+
+  /* Dark Mode Palette: Deep comfortable navy canvas, lighter navy cards, clear blue */
+  --bg-app: #0d1626;
+  --bg-surface: #162238;
+  --bg-surface-subtle: #1d2d47;
+  --bg-chrome: #131e33;
+  --bg-hover: #243757;
+
+  --border-default: #253654;
+  --border-strong: #32486e;
+
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+  --brand-soft: rgba(59, 130, 246, 0.18);
+  --brand-soft-text: #93c5fd;
+
+  --text-primary: #edf2f7;
+  --text-secondary: #b0bfd4;
+  --text-muted: #8497b3;
+
+  --color-success: #34d399;
+  --color-success-bg: rgba(16, 185, 129, 0.16);
+  --color-success-border: rgba(52, 211, 153, 0.35);
+
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(245, 158, 11, 0.16);
+  --color-warning-border: rgba(251, 191, 36, 0.35);
+
+  --color-danger: #f87171;
+  --color-danger-hover: #ef4444;
+  --color-danger-bg: rgba(244, 63, 94, 0.16);
+  --color-danger-border: rgba(248, 113, 113, 0.38);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--app-font);
+    font-size: var(--fs-body);
+    line-height: 1.55;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    transition: background-color 0.18s ease, color 0.18s ease;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-family: inherit;
+  }
+}
+
+/* ==========================================================================
+   Unified Layout & Component Primitives (Layered so Tailwind utilities win)
+   ========================================================================== */
+@layer components {
+  .app-safe-header {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .app-safe-shell {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .app-safe-drawer {
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-scroll-region {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .app-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .app-card-subtle {
+    background-color: var(--bg-surface-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: 0.75rem;
+  }
+
+  .app-page-title {
+    font-size: var(--fs-page-title);
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--text-primary);
+  }
+
+  .app-section-title {
+    font-size: var(--fs-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-primary);
+  }
+
+  .app-body-text {
+    font-size: var(--fs-body);
+    line-height: 1.55;
+    color: var(--text-primary);
+  }
+
+  .app-meta-text {
+    font-size: var(--fs-meta);
+    line-height: 1.45;
+    color: var(--text-secondary);
+  }
+
+  .app-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .app-input {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-strong);
+    background-color: var(--bg-surface-subtle);
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    padding: 0.55rem 0.875rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .app-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .app-input:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+    background-color: var(--bg-surface);
+  }
+
+  .app-btn-primary {
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    background-color: var(--brand-primary);
+    color: #ffffff;
+    font-size: var(--fs-button);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
+  }
+
+  .app-btn-primary:hover:not(:disabled) {
+    background-color: var(--brand-primary-hover);
+  }
+
+  .app-btn-primary:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+
+  .app-btn-primary:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .app-btn-secondary {
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-strong);
+    background-color: var(--bg-surface-subtle);
+    color: var(--text-primary);
+    font-size: var(--fs-button);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  }
+
+  .app-btn-secondary:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+
+  .app-btn-danger {
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    border-radius: 0.75rem;
+    background-color: var(--color-danger);
+    color: #ffffff;
+    font-size: var(--fs-button);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .app-btn-danger:hover:not(:disabled) {
+    background-color: var(--color-danger-hover);
+  }
+
+  .app-table-head {
+    background-color: var(--brand-primary);
+    color: #ffffff;
+    font-weight: 700;
+  }
+}
+
+/* ==========================================================================
+   Dark Mode Compatibility Tokens for All Existing Screens & Modals
+   ========================================================================== */
+html.dark .bg-white,
+html.dark .bg-white\/90 {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/40,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-\[\#f5f6f8\] {
+  background-color: var(--bg-surface-subtle) !important;
+  color: var(--text-primary);
+}
+
+html.dark .bg-slate-100,
+html.dark .bg-slate-100\/50,
+html.dark .bg-slate-100\/70,
+html.dark .bg-slate-200,
+html.dark .bg-slate-200\/80,
+html.dark .bg-\[\#f0f0f0\] {
+  background-color: var(--bg-surface-subtle) !important;
+  color: var(--text-primary);
+}
+
+html.dark .bg-slate-700,
+html.dark .bg-slate-800 {
+  background-color: #1e3150 !important;
+  color: #ffffff !important;
+}
+
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-50\/50,
+html.dark .bg-emerald-100 {
+  background-color: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+}
+
+html.dark .bg-teal-50,
+html.dark .bg-teal-50\/30,
+html.dark .bg-teal-50\/40,
+html.dark .bg-teal-50\/50,
+html.dark .bg-teal-50\/60,
+html.dark .bg-teal-50\/70,
+html.dark .bg-teal-50\/80,
+html.dark .bg-teal-100\/70 {
+  background-color: rgba(20, 184, 166, 0.16) !important;
+  color: #5eead4 !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/70,
+html.dark .bg-amber-50\/90,
+html.dark .bg-amber-100,
+html.dark .bg-amber-100\/70 {
+  background-color: var(--color-warning-bg) !important;
+  color: var(--color-warning) !important;
+}
+
+html.dark .bg-rose-50,
+html.dark .bg-red-50,
+html.dark .bg-red-50\/50,
+html.dark .bg-red-50\/60,
+html.dark .bg-red-100,
+html.dark .bg-red-100\/70 {
+  background-color: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+}
+
+html.dark .bg-blue-50,
+html.dark .bg-blue-50\/70,
+html.dark .bg-indigo-50 {
+  background-color: var(--brand-soft) !important;
+  color: var(--brand-soft-text) !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-50\/70:hover,
+html.dark .hover\:bg-slate-50\/80:hover,
+html.dark .hover\:bg-slate-100:hover,
+html.dark .hover\:bg-slate-200:hover,
+html.dark .hover\:bg-slate-200\/60:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+html.dark .hover\:bg-blue-50:hover,
+html.dark .hover\:bg-blue-100:hover {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+html.dark .hover\:bg-teal-50:hover,
+html.dark .hover\:bg-teal-100\/70:hover {
+  background-color: rgba(20, 184, 166, 0.24) !important;
+}
+
+html.dark .hover\:bg-rose-50:hover,
+html.dark .hover\:bg-red-50:hover,
+html.dark .hover\:bg-red-100:hover {
+  background-color: rgba(244, 63, 94, 0.24) !important;
+}
+
+/* Text colors in Dark Mode (high readability, zero dark-on-dark traps) */
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+html.dark .text-\[\#1e4663\],
+html.dark .text-blue-600,
+html.dark .text-blue-700,
+html.dark .text-blue-800,
+html.dark .text-blue-900 {
+  color: var(--brand-soft-text) !important;
+}
+
+html.dark .text-\[\#0d9488\],
+html.dark .text-teal-900,
+html.dark .text-teal-800,
+html.dark .text-teal-700,
+html.dark .text-teal-600 {
+  color: #2dd4bf !important;
+}
+
+html.dark .text-emerald-800,
+html.dark .text-emerald-700,
+html.dark .text-emerald-600 {
+  color: var(--color-success) !important;
+}
+
+html.dark .text-amber-900,
+html.dark .text-amber-800,
+html.dark .text-amber-700,
+html.dark .text-amber-600 {
+  color: var(--color-warning) !important;
+}
+
+html.dark .text-\[\#b91c1c\],
+html.dark .text-rose-800,
+html.dark .text-rose-700,
+html.dark .text-rose-600,
+html.dark .text-red-700,
+html.dark .text-red-600,
+html.dark .text-red-500 {
+  color: var(--color-danger) !important;
+}
+
+/* Keep solid action buttons crisp white text */
+html.dark .bg-blue-600,
+html.dark .bg-blue-700,
+html.dark .bg-emerald-600,
+html.dark .bg-rose-600,
+html.dark .bg-teal-600,
+html.dark .bg-amber-600,
+html.dark .bg-\[\#1e4663\],
+html.dark .bg-\[\#0d9488\],
+html.dark .bg-\[\#b91c1c\],
+html.dark .bg-\[\#3b5971\] {
+  color: #ffffff !important;
+}
+
+html.dark .bg-\[\#1e4663\] {
+  background-color: var(--brand-primary) !important;
+}
+
+/* Borders & Dividers */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-300 {
+  border-color: var(--border-default) !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200\/80 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-default) !important;
+}
+
+html.dark .border-teal-100,
+html.dark .border-teal-200 {
+  border-color: rgba(45, 212, 191, 0.32) !important;
+}
+
+html.dark .border-emerald-100,
+html.dark .border-emerald-200 {
+  border-color: var(--color-success-border) !important;
+}
+
+html.dark .border-amber-200,
+html.dark .border-amber-300 {
+  border-color: var(--color-warning-border) !important;
+}
+
+html.dark .border-rose-200,
+html.dark .border-red-100,
+html.dark .border-red-200 {
+  border-color: var(--color-danger-border) !important;
+}
+
+/* Form controls in Dark Mode */
+html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+html.dark select,
+html.dark textarea {
+  background-color: var(--bg-app) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Gradient metric cards in Dark Mode (ReportsScreen) */
+html.dark .from-emerald-500\/10,
+html.dark .from-amber-500\/10,
+html.dark .from-teal-500\/10,
+html.dark .from-blue-500\/10 {
+  --tw-gradient-via: var(--bg-surface) !important;
+  --tw-gradient-to: var(--bg-surface) !important;
+}
+
+/* Thermal & A4 Printable Receipt stays crisp black-on-white paper */
+html.dark #printable-receipt,
+html.dark #printable-receipt * {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-receipt,
+  #printable-receipt * {
+    visibility: visible;
+  }
+
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0 auto;
+    padding: 8px;
+    font-size: 12px;
+    color: black !important;
+    background: white !important;
+  }
+
+  #printable-receipt.receipt-58mm {
+    width: 58mm;
+    padding: 4px;
+    font-size: 10px;
+  }
+
+  #printable-receipt.receipt-a4 {
+    width: 100%;
+    max-width: 210mm;
+    padding: 16px;
+    font-size: 14px;
+  }
+}

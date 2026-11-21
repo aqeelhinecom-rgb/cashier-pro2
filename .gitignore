@@ -1,0 +1,52 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+
+# Android Keystores & Signing Certificates
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+android/app/release/
+android/local.properties
+
+# Databases & Temporary Backups
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+docs/backups_p17/
+docs/backups_p19/
+docs/PREVIOUS_firestore.rules
+
+# Legacy Artifacts, Archives & Unused Media
+*.apk
+*.aab
+*.zip
+extracted_app/
+public/assets/aistudio/
+public/favicon-64x64.png
+.aistudio/
+
+# Generated Android Capacitor Assets & Build Caches
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+

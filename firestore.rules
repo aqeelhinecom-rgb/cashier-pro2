@@ -1,0 +1,319 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // Global Safety Net: Default Deny All Unmatched Access
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Core Security & Verification Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Verifies that user is active and belongs to the specific merchant store
+    function isStoreMember(storeId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    function getStoreRole(storeId) {
+      return get(/databases/$(database)/documents/stores/$(storeId)/users/$(request.auth.uid)).data.role;
+    }
+
+    function isStoreOwner(storeId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/stores/$(storeId)).data.ownerUid == request.auth.uid ||
+        (isStoreMember(storeId) && getStoreRole(storeId) in ['owner', 'admin'])
+      );
+    }
+
+    function isStoreManager(storeId) {
+      return isStoreMember(storeId) && (getStoreRole(storeId) in ['owner', 'admin', 'manager']);
+    }
+
+    function isAccountantOrHigher(storeId) {
+      return isStoreMember(storeId) && (getStoreRole(storeId) in ['owner', 'admin', 'manager', 'accountant']);
+    }
+
+    function isInventoryManagerOrHigher(storeId) {
+      return isStoreMember(storeId) && (getStoreRole(storeId) in ['owner', 'admin', 'manager', 'inventory_manager']);
+    }
+
+    // CRITICAL (SEC-01): Hardware Device authorization check against trusted server document
+    function isAuthorizedDevice(storeId, deviceId) {
+      return isValidId(deviceId) &&
+        exists(/databases/$(database)/documents/stores/$(storeId)/devices/$(deviceId)) &&
+        get(/databases/$(database)/documents/stores/$(storeId)/devices/$(deviceId)).data.status == 'active';
+    }
+
+    // =========================================================================
+    // Tenant Store Root: Gated by storeId isolation
+    // =========================================================================
+    match /stores/{storeId} {
+      allow get: if isSignedIn() && (resource.data.ownerUid == request.auth.uid || isStoreMember(storeId));
+      allow list: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+        isValidId(storeId) &&
+        incoming().ownerUid == request.auth.uid &&
+        incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 150 &&
+        incoming().currency is string && incoming().currency.size() > 0 && incoming().currency.size() <= 20;
+
+      allow update: if isStoreOwner(storeId) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'currency', 'updatedAt']);
+
+      allow delete: if false; // Store tenants cannot be physically deleted via client SDK
+
+      // -----------------------------------------------------------------------
+      // 1. Authorized Hardware Devices (Terminals, Phones, Handhelds)
+      // -----------------------------------------------------------------------
+      match /devices/{deviceId} {
+        allow get: if isStoreMember(storeId);
+        allow list: if isStoreManager(storeId);
+
+        allow create: if isStoreManager(storeId) &&
+          isValidId(deviceId) &&
+          incoming().storeId == storeId &&
+          incoming().status in ['active', 'pending'] &&
+          incoming().platform in ['android', 'windows', 'web', 'ios'];
+
+        allow update: if isStoreManager(storeId) &&
+          incoming().storeId == existing().storeId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['label', 'status', 'lastActiveAt']);
+
+        allow delete: if isStoreOwner(storeId);
+      }
+
+      // -----------------------------------------------------------------------
+      // 2. Staff & RBAC Accounts (Owner, Admin, Manager, Cashier, etc.)
+      // -----------------------------------------------------------------------
+      match /users/{userId} {
+        allow get: if isStoreMember(storeId) && isValidId(userId) && (userId == request.auth.uid || isStoreManager(storeId));
+        allow list: if isStoreManager(storeId);
+
+        allow create, update: if isStoreOwner(storeId) &&
+          isValidId(userId) &&
+          incoming().storeId == storeId &&
+          incoming().role in ['owner', 'admin', 'manager', 'cashier', 'inventory_manager', 'accountant'] &&
+          incoming().isActive is bool;
+
+        allow delete: if isStoreOwner(storeId) && isValidId(userId) && userId != request.auth.uid;
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. Products Catalog: Public POS catalog (Selling Price only, NO cost)
+      // -----------------------------------------------------------------------
+      match /products/{productId} {
+        allow get, list: if isStoreMember(storeId);
+
+        allow create: if isInventoryManagerOrHigher(storeId) &&
+          isValidId(productId) &&
+          incoming().storeId == storeId &&
+          isAuthorizedDevice(storeId, incoming().updatedByDevice) &&
+          incoming().name is string && incoming().name.size() > 0 && incoming().name.size() <= 200 &&
+          incoming().sell_price is number && incoming().sell_price >= 0 &&
+          incoming().qty is number &&
+          incoming().version is int && incoming().version >= 1;
+
+        allow update: if isStoreMember(storeId) &&
+          isValidId(productId) &&
+          incoming().storeId == existing().storeId &&
+          incoming().version > existing().version &&
+          isAuthorizedDevice(storeId, incoming().updatedByDevice) &&
+          (
+            // Cashiers can only decrement stock during sale transactions from an authorized device
+            (getStoreRole(storeId) == 'cashier' &&
+             incoming().diff(existing()).affectedKeys().hasOnly(['qty', 'version', 'updatedAt', 'updatedByDevice'])) ||
+            // Inventory Managers and higher can update full catalog fields
+            (isInventoryManagerOrHigher(storeId) &&
+             incoming().diff(existing()).affectedKeys().hasOnly(['name', 'barcode', 'category', 'sell_price', 'qty', 'version', 'updatedAt', 'updatedByDevice', 'isDeleted']))
+          );
+
+        allow delete: if false; // Products cannot be physically deleted; only marked isDeleted: true
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. Confidential Product Cost & Margin: Gated from Cashiers
+      // -----------------------------------------------------------------------
+      match /products_cost/{productId} {
+        // Cashiers are DENIED read and write access
+        allow get, list: if isAccountantOrHigher(storeId);
+
+        allow create, update: if isInventoryManagerOrHigher(storeId) &&
+          isValidId(productId) &&
+          incoming().storeId == storeId &&
+          incoming().buy_price is number && incoming().buy_price >= 0;
+
+        allow delete: if false;
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. Invoices (Sales, Purchases, Returns): Financial Protection
+      // -----------------------------------------------------------------------
+      match /invoices/{invoiceId} {
+        allow get, list: if isStoreMember(storeId);
+
+        // SEC-01: Must come from an authenticated user AND an active authorized device
+        allow create: if isStoreMember(storeId) &&
+          isValidId(invoiceId) &&
+          incoming().storeId == storeId &&
+          incoming().createdBy == request.auth.uid &&
+          isAuthorizedDevice(storeId, incoming().deviceId) &&
+          incoming().type in ['sale', 'purchase', 'sale_return'] &&
+          incoming().total is number && incoming().total >= 0 &&
+          incoming().paid is number && incoming().paid >= 0 &&
+          incoming().invoice_number is string && incoming().invoice_number.size() > 0 &&
+          incoming().idempotencyKey is string && incoming().idempotencyKey.size() > 0;
+
+        // Financial figures (total, paid, discount, items) are IMMUTABLE once approved!
+        allow update: if isStoreManager(storeId) &&
+          isValidId(invoiceId) &&
+          incoming().storeId == existing().storeId &&
+          isAuthorizedDevice(storeId, incoming().updatedByDevice) &&
+          incoming().total == existing().total &&
+          incoming().paid == existing().paid &&
+          incoming().invoice_number == existing().invoice_number &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['isDeleted', 'voidReason', 'voidedBy', 'updatedAt', 'updatedByDevice', 'reconciliation_required', 'reconciliation_status']);
+
+        allow delete: if false; // Invoices CANNOT be physically deleted
+      }
+
+      // -----------------------------------------------------------------------
+      // 6. Payments: Immutable Financial Settlement Ledger
+      // -----------------------------------------------------------------------
+      match /payments/{paymentId} {
+        allow get, list: if isStoreMember(storeId);
+
+        allow create: if isStoreMember(storeId) &&
+          isValidId(paymentId) &&
+          incoming().storeId == storeId &&
+          incoming().createdBy == request.auth.uid &&
+          isAuthorizedDevice(storeId, incoming().deviceId) &&
+          incoming().amount is number && incoming().amount > 0;
+
+        allow update, delete: if false; // Payments are strictly append-only
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. Administrative Reconciliation Records: Inventory Conflict Deficit Ledger
+      // -----------------------------------------------------------------------
+      match /reconciliation_records/{recordId} {
+        allow get, list: if isAccountantOrHigher(storeId);
+
+        // Created by authorized device when offline oversell occurs
+        allow create: if isStoreMember(storeId) &&
+          isValidId(recordId) &&
+          incoming().storeId == storeId &&
+          isAuthorizedDevice(storeId, incoming().deviceId) &&
+          incoming().deficitQty is number && incoming().deficitQty > 0;
+
+        // Cashiers cannot modify; Managers can resolve
+        allow update: if isStoreManager(storeId) &&
+          incoming().storeId == existing().storeId &&
+          incoming().deficitQty == existing().deficitQty &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'resolvedBy', 'resolvedAt', 'resolutionNotes', 'resolutionAction']);
+
+        allow delete: if false; // Reconciliation audit records cannot be deleted
+      }
+
+      // -----------------------------------------------------------------------
+      // 8. Idempotent Sync Queue (Multi-Device Event Bus)
+      // -----------------------------------------------------------------------
+      match /sync_queue/{idempotencyKey} {
+        allow get: if isStoreMember(storeId);
+        allow list: if isStoreManager(storeId);
+
+        allow create: if isStoreMember(storeId) &&
+          isValidId(idempotencyKey) &&
+          incoming().storeId == storeId &&
+          incoming().idempotencyKey == idempotencyKey &&
+          isAuthorizedDevice(storeId, incoming().deviceId) &&
+          incoming().table in ['products', 'parties', 'invoices', 'invoice_items', 'payments', 'expenses', 'reconciliation_records'] &&
+          incoming().action in ['create', 'update', 'delete', 'stock_change', 'void'] &&
+          incoming().status in ['pending', 'synced', 'failed', 'conflict'];
+
+        allow update: if false; // Payloads cannot be tampered with after queuing
+        allow delete: if isStoreOwner(storeId);
+      }
+
+      // -----------------------------------------------------------------------
+      // 9. Change Journal Audit Log: Strictly Append-Only & Client-Immutable
+      // -----------------------------------------------------------------------
+      match /change_journal/{entryId} {
+        allow get, list: if isAccountantOrHigher(storeId);
+
+        allow create: if isStoreMember(storeId) &&
+          isValidId(entryId) &&
+          incoming().storeId == storeId &&
+          incoming().operationId is string && incoming().operationId.size() > 0 &&
+          incoming().createdBy == request.auth.uid &&
+          isAuthorizedDevice(storeId, incoming().deviceId);
+
+        allow update, delete: if false; // Audit trail cannot be modified or deleted by clients
+      }
+    }
+
+    // =========================================================================
+    // Personal Cloud Profile & Cloud Backups (FIND-P17-05)
+    // Used by src/services/firebase.ts for Google sign-in profile & backup snapshots
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+
+      allow create, update: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        incoming().userId == userId &&
+        incoming().keys().hasAll(['userId', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'email', 'displayName', 'updatedAt']) &&
+        (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 150)) &&
+        (!('displayName' in incoming()) || (incoming().displayName is string && incoming().displayName.size() <= 150)) &&
+        incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
+
+      allow delete: if false;
+
+      match /backups/{backupId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(backupId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+          isValidId(userId) &&
+          isValidId(backupId) &&
+          request.auth.uid == userId &&
+          incoming().id == backupId &&
+          incoming().userId == userId &&
+          incoming().keys().hasAll(['id', 'userId', 'fileName', 'createdAt', 'dataJson']) &&
+          incoming().keys().hasOnly(['id', 'userId', 'fileName', 'createdAt', 'dataJson', 'totalProducts', 'totalInvoices']) &&
+          incoming().fileName is string && incoming().fileName.size() > 0 && incoming().fileName.size() <= 150 &&
+          incoming().createdAt is string && incoming().createdAt.size() <= 64 &&
+          incoming().dataJson is string && incoming().dataJson.size() > 0 && incoming().dataJson.size() <= 1048576 &&
+          (!('totalProducts' in incoming()) || incoming().totalProducts is int || incoming().totalProducts is number) &&
+          (!('totalInvoices' in incoming()) || incoming().totalInvoices is int || incoming().totalInvoices is number);
+
+        allow update: if false; // Cloud backups are immutable snapshots
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(backupId) && request.auth.uid == userId;
+      }
+    }
+  }
+}

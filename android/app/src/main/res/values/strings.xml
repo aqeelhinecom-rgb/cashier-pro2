@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cashier Pro</string>
+    <string name="title_activity_main">Cashier Pro</string>
+    <string name="package_name">com.youssef.pos</string>
+    <string name="custom_url_scheme">com.youssef.pos</string>
+</resources>

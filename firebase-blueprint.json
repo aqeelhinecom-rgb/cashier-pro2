@@ -1,0 +1,258 @@
+{
+  "entities": {
+    "StoreAccount": {
+      "title": "Store Account",
+      "description": "Represents a tenant merchant store account in Cashier Pro",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "currency": { "type": "string", "maxLength": 20 },
+        "ownerUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "currency", "ownerUid", "createdAt", "updatedAt"]
+    },
+    "Device": {
+      "title": "Authorized Hardware Device",
+      "description": "Authorized cashier tablet, phone, or desktop terminal linked to a store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "label": { "type": "string", "maxLength": 100 },
+        "platform": { "type": "string", "enum": ["android", "windows", "web", "ios"] },
+        "status": { "type": "string", "enum": ["active", "revoked", "suspended", "pending"] },
+        "registeredBy": { "type": "string", "maxLength": 128 },
+        "lastActiveAt": { "type": "string", "format": "date-time" },
+        "registeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "storeId", "label", "platform", "status", "registeredAt"]
+    },
+    "StoreUser": {
+      "title": "Store User & Permissions",
+      "description": "User profile and RBAC role within a store tenant",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 150 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["owner", "admin", "manager", "cashier", "inventory_manager", "accountant"] },
+        "permissions": {
+          "type": "object",
+          "description": "Granular permissions for POS features"
+        },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "storeId", "email", "role", "isActive", "createdAt"]
+    },
+    "Product": {
+      "title": "Product Entity (Catalog)",
+      "description": "Inventory product item replicated across store terminals (Excludes cost price)",
+      "type": "object",
+      "properties": {
+        "uuid": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "barcode": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "maxLength": 100 },
+        "sell_price": { "type": "number" },
+        "qty": { "type": "number" },
+        "version": { "type": "integer" },
+        "updatedByDevice": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "isDeleted": { "type": "boolean" }
+      },
+      "required": ["uuid", "storeId", "name", "sell_price", "qty", "version", "updatedAt"]
+    },
+    "ProductCost": {
+      "title": "Product Cost & Profit Margin",
+      "description": "Confidential purchase and cost price data gated from cashiers",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "buy_price": { "type": "number" },
+        "lastSupplier": { "type": "string", "maxLength": 150 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "storeId", "buy_price", "updatedAt"]
+    },
+    "Invoice": {
+      "title": "Invoice Entity",
+      "description": "Sales or Purchase transaction invoice record",
+      "type": "object",
+      "properties": {
+        "uuid": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "invoice_number": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["sale", "purchase", "sale_return"] },
+        "party_id": { "type": "integer" },
+        "party_uuid": { "type": "string", "maxLength": 128 },
+        "total": { "type": "number" },
+        "paid": { "type": "number" },
+        "discount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "idempotencyKey": { "type": "string", "maxLength": 128 },
+        "reconciliation_required": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "isDeleted": { "type": "boolean" }
+      },
+      "required": ["uuid", "storeId", "invoice_number", "type", "total", "paid", "date", "deviceId", "createdBy", "idempotencyKey", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment Transaction Record",
+      "description": "Immutable ledger entry of customer debt repayment or supplier settlement",
+      "type": "object",
+      "properties": {
+        "uuid": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "party_id": { "type": "integer" },
+        "amount": { "type": "number" },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uuid", "storeId", "amount", "deviceId", "createdBy", "date", "updatedAt"]
+    },
+    "ReconciliationRecord": {
+      "title": "Administrative Reconciliation Record",
+      "description": "Deficit audit ledger item created when concurrent offline sales exceed inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "invoiceNumber": { "type": "string", "maxLength": 64 },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "requestedQty": { "type": "number" },
+        "availableQtyAtSync": { "type": "number" },
+        "deficitQty": { "type": "number" },
+        "detectedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending_review", "resolved_by_restock", "resolved_by_adjustment", "resolved_by_return", "resolved_by_void"] },
+        "resolvedBy": { "type": "string", "maxLength": 128 },
+        "resolvedAt": { "type": "string", "format": "date-time" },
+        "resolutionNotes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "storeId", "productId", "invoiceNumber", "deviceId", "requestedQty", "deficitQty", "detectedAt", "status"]
+    },
+    "SyncJournalItem": {
+      "title": "Sync Operation Record",
+      "description": "Idempotent change journal event queued for multi-device replication",
+      "type": "object",
+      "properties": {
+        "idempotencyKey": { "type": "string", "maxLength": 128 },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "seq": { "type": "integer" },
+        "table": { "type": "string", "maxLength": 50 },
+        "action": { "type": "string", "enum": ["create", "update", "delete", "stock_change", "void"] },
+        "recordUuid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending", "synced", "failed", "conflict"] },
+        "clientTimestamp": { "type": "string", "format": "date-time" },
+        "serverTimestamp": { "type": "string", "format": "date-time" },
+        "payloadJson": { "type": "string" }
+      },
+      "required": ["idempotencyKey", "deviceId", "storeId", "seq", "table", "action", "recordUuid", "status", "clientTimestamp"]
+    },
+    "ChangeJournalEntry": {
+      "title": "Immutable Change Journal Entry",
+      "description": "Append-only operational audit trail synced from store devices",
+      "type": "object",
+      "properties": {
+        "operationId": { "type": "string", "maxLength": 128 },
+        "storeId": { "type": "string", "maxLength": 128 },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "table": { "type": "string", "maxLength": 50 },
+        "action": { "type": "string", "enum": ["create", "update", "delete", "void", "stock_change"] },
+        "recordId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["operationId", "storeId", "deviceId", "createdBy", "table", "action", "recordId", "timestamp"]
+    },
+    "UserProfile": {
+      "title": "Signed-in User Profile",
+      "description": "Personal Google account metadata stored on sign-in",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 150 },
+        "displayName": { "type": "string", "maxLength": 150 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "updatedAt"]
+    },
+    "UserCloudBackup": {
+      "title": "Personal Cloud Backup Snapshot",
+      "description": "Owner-isolated Firestore backup snapshot saved under /users/{userId}/backups/{backupId}",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "fileName": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "dataJson": { "type": "string" },
+        "totalProducts": { "type": "integer" },
+        "totalInvoices": { "type": "integer" }
+      },
+      "required": ["id", "userId", "fileName", "createdAt", "dataJson"]
+    }
+  },
+  "firestore": {
+    "/stores/{storeId}": {
+      "schema": { "$ref": "#/entities/StoreAccount" },
+      "description": "Merchant tenant root configuration"
+    },
+    "/stores/{storeId}/devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/Device" },
+      "description": "Authorized hardware terminals and phones"
+    },
+    "/stores/{storeId}/users/{userId}": {
+      "schema": { "$ref": "#/entities/StoreUser" },
+      "description": "Staff and manager RBAC accounts"
+    },
+    "/stores/{storeId}/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Synced product inventory catalog (public prices)"
+    },
+    "/stores/{storeId}/products_cost/{productId}": {
+      "schema": { "$ref": "#/entities/ProductCost" },
+      "description": "Confidential cost and buy prices (Restricted from cashiers)"
+    },
+    "/stores/{storeId}/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Sales and purchases transaction records"
+    },
+    "/stores/{storeId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Immutable debt settlement and payment vouchers"
+    },
+    "/stores/{storeId}/reconciliation_records/{recordId}": {
+      "schema": { "$ref": "#/entities/ReconciliationRecord" },
+      "description": "Administrative inventory conflict deficit records"
+    },
+    "/stores/{storeId}/sync_queue/{idempotencyKey}": {
+      "schema": { "$ref": "#/entities/SyncJournalItem" },
+      "description": "Distributed idempotency and replication queue"
+    },
+    "/stores/{storeId}/change_journal/{entryId}": {
+      "schema": { "$ref": "#/entities/ChangeJournalEntry" },
+      "description": "Client-immutable operational audit journal"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-private signed-in user profile document"
+    },
+    "/users/{userId}/backups/{backupId}": {
+      "schema": { "$ref": "#/entities/UserCloudBackup" },
+      "description": "Owner-private Firestore backup snapshots"
+    }
+  }
+}

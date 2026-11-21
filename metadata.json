@@ -1,0 +1,10 @@
+{
+  "name": " 1كاشير - نظام إدارة المبيعات والمخزن",
+  "description": "تطبيق كاشير متكامل لإدارة حسابات المحلات، فواتير البيع والشراء، المخزن، حسابات العملاء والموردين، والتقارير والأرباح اليومية والشهرية.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,89 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Global Safety Net: Default Deny All
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Helper Functions for Tenant Isolation, RBAC, and Device Verification
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isStoreMember(storeId) {
+      return isSignedIn() &&
+        isValidId(storeId) &&
+        firestore.exists(/databases/(default)/documents/stores/$(storeId)/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/stores/$(storeId)/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    function getStoreRole(storeId) {
+      return firestore.get(/databases/(default)/documents/stores/$(storeId)/users/$(request.auth.uid)).data.role;
+    }
+
+    function isStoreOwner(storeId) {
+      return isStoreMember(storeId) && (getStoreRole(storeId) in ['owner', 'admin']);
+    }
+
+    function isInventoryManagerOrHigher(storeId) {
+      return isStoreMember(storeId) && (getStoreRole(storeId) in ['owner', 'admin', 'manager', 'inventory_manager']);
+    }
+
+    function isAuthorizedDeviceFromMetadata(storeId) {
+      return request.resource.metadata != null &&
+        'deviceId' in request.resource.metadata &&
+        isValidId(request.resource.metadata.deviceId) &&
+        firestore.exists(/databases/(default)/documents/stores/$(storeId)/devices/$(request.resource.metadata.deviceId)) &&
+        firestore.get(/databases/(default)/documents/stores/$(storeId)/devices/$(request.resource.metadata.deviceId)).data.status == 'active';
+    }
+
+    function isImage() {
+      return request.resource != null &&
+        request.resource.contentType != null &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function isWithinImageSizeLimit() {
+      return request.resource != null && request.resource.size > 0 && request.resource.size <= 2 * 1024 * 1024;
+    }
+
+    // =========================================================================
+    // Tenant-Isolated Store Product Images (Supports multi-tier & thumbnails)
+    // =========================================================================
+    match /stores/{storeId}/products/{productId}/{allImagePaths=**} {
+      // Only active members of THIS specific store can read images
+      allow read: if isStoreMember(storeId) && isValidId(productId);
+
+      // Only inventory managers/managers/owners from an authorized active device can upload
+      allow write: if isInventoryManagerOrHigher(storeId) &&
+        isValidId(productId) &&
+        isAuthorizedDeviceFromMetadata(storeId) &&
+        isImage() &&
+        isWithinImageSizeLimit();
+
+      // Only managers/owners can delete product images
+      allow delete: if isInventoryManagerOrHigher(storeId) && isValidId(productId);
+    }
+
+    // =========================================================================
+    // Encrypted / Signed Store Backups Folder (Owner-Only, No Client Delete)
+    // =========================================================================
+    match /stores/{storeId}/backups/{backupFileName} {
+      allow read: if isStoreOwner(storeId);
+      allow write: if isStoreOwner(storeId) &&
+        isAuthorizedDeviceFromMetadata(storeId) &&
+        request.resource.contentType == 'application/json' &&
+        request.resource.size > 0 &&
+        request.resource.size <= 100 * 1024 * 1024; // 100MB max
+      allow delete: if false; // Backups cannot be deleted through storage client
+    }
+  }
+}

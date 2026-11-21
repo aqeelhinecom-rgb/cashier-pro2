@@ -1,12 +1,12 @@
 {
   "projectId": "hidef-listener-dpthm",
   "appId": "1:753751459824:web:d03fad9b86049e7ff13f35",
-  "apiKey": "AIzaSyDhTk10CEAVTfxGa6Dh63qPykjCUwtYxWQ",
+  "apiKey": "AIzaSyDhTk1OCEAVTfxGa6Dh63qPykjCUwtYxWQ",
   "authDomain": "hidef-listener-dpthm.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-1-59cfe8d7-2641-449f-802a-0da3b6f36dc2",
+  "firestoreDatabaseId": "ai-studio-1-39cfe8d7-2841-449f-802a-0da3b6f38dc2",
   "storageBucket": "hidef-listener-dpthm.firebasestorage.app",
   "messagingSenderId": "753751459824",
   "measurementId": "",
   "oAuthClientId": "350661523968-bubkl42a0h2vsno2mk5ibki0qitu1qbj.apps.googleusercontent.com",
-
   "recaptchaSiteKey": ""
+}
